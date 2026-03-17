@@ -34,13 +34,13 @@ jobs:
       # The runner starts with an EMPTY workspace. This action clones your
       # repository so the following steps can access your code.
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       # ── Step 2: Install Go ──────────────────────────────────────────────────
       # The runner has many tools pre-installed, but we pin the Go version
       # so our CI always uses the same version as our go.mod specifies.
       - name: Set up Go
-        uses: actions/setup-go@v5
+        uses: actions/setup-go@v6
         with:
           go-version-file: go.mod   # Reads the version from go.mod automatically
 
