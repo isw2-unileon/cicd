@@ -78,8 +78,13 @@ jobs:
       # Teaching note: govulncheck is the official Go tool for checking whether
       # your code ACTUALLY CALLS the vulnerable functions in a dependency —
       # not just whether you depend on a vulnerable version. This reduces noise.
+      #
+      # Teaching note: `repo-checkout: false` tells the action not to run its
+      # own internal actions/checkout. We already checked out above, so a second
+      # checkout causes a "Duplicate header: Authorization" 400 error.
       - name: Run govulncheck
         uses: golang/govulncheck-action@v1
         with:
           go-version-file: go.mod
           go-package: ./...
+          repo-checkout: false
