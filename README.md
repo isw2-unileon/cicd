@@ -1,5 +1,12 @@
 # CI/CD with GitHub Actions
 
+[![CI](https://github.com/isw2-unileon/cicd/actions/workflows/02-continuous-integration.yml/badge.svg)](https://github.com/isw2-unileon/cicd/actions/workflows/02-continuous-integration.yml)
+[![Code Quality](https://github.com/isw2-unileon/cicd/actions/workflows/03-code-quality.yml/badge.svg)](https://github.com/isw2-unileon/cicd/actions/workflows/03-code-quality.yml)
+[![Coverage](https://github.com/isw2-unileon/cicd/actions/workflows/04-coverage.yml/badge.svg)](https://github.com/isw2-unileon/cicd/actions/workflows/04-coverage.yml)
+[![Security](https://github.com/isw2-unileon/cicd/actions/workflows/11-security.yml/badge.svg)](https://github.com/isw2-unileon/cicd/actions/workflows/11-security.yml)
+[![Go version](https://img.shields.io/github/go-mod/go-version/isw2-unileon/cicd)](go.mod)
+[![License](https://img.shields.io/github/license/isw2-unileon/cicd)](LICENSE)
+
 A teaching repository for the **Software Engineering II** course. This repo demonstrates CI/CD principles and GitHub Actions from the ground up, using a simple Go HTTP API as the application under delivery.
 
 ---
