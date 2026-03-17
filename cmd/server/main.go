@@ -57,7 +57,9 @@ func newHandler() http.Handler {
 // This is used by load balancers and deployment pipelines to check readiness.
 func healthHandler(w http.ResponseWriter, _ *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(map[string]string{"status": "ok"})
+	if err := json.NewEncoder(w).Encode(map[string]string{"status": "ok"}); err != nil {
+		slog.Error("failed to write health response", "error", err)
+	}
 }
 
 // calculateHandler handles POST /calculate requests.
@@ -83,5 +85,7 @@ func calculateHandler(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusUnprocessableEntity)
 		resp.Error = err.Error()
 	}
-	json.NewEncoder(w).Encode(resp)
+	if err := json.NewEncoder(w).Encode(resp); err != nil {
+		slog.Error("failed to write calculate response", "error", err)
+	}
 }
