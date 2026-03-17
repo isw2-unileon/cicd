@@ -22,6 +22,11 @@ linters:
     - ineffassign   # Detects ineffectual assignments
     - staticcheck   # Comprehensive static analysis
     - unused        # Finds unused code
+
+# Teaching note: in golangci-lint v2, formatters are a separate category
+# from linters. gofmt and goimports must be declared here, not under linters.
+formatters:
+  enable:
     - gofmt         # Checks code formatting
     - goimports     # Checks import grouping
 
