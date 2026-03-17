@@ -34,7 +34,7 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       # ── Extract metadata for tags and labels ──────────────────────────────────
       # docker/metadata-action computes smart image tags based on the trigger:
@@ -43,7 +43,7 @@ jobs:
       #   - Pull request    → pr-42 (not pushed to registry)
       - name: Extract Docker metadata
         id: meta
-        uses: docker/metadata-action@v5
+        uses: docker/metadata-action@v6
         with:
           images: ghcr.io/${{ github.repository }}
           tags: |
@@ -57,20 +57,20 @@ jobs:
       # QEMU emulates other CPU architectures so we can build ARM64 images
       # from an AMD64 runner.
       - name: Set up QEMU
-        uses: docker/setup-qemu-action@v3
+        uses: docker/setup-qemu-action@v4
 
       # ── Set up Docker Buildx ──────────────────────────────────────────────────
       # Buildx is the modern Docker build backend. It's required for
       # multi-platform builds and build cache exports.
       - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
+        uses: docker/setup-buildx-action@v4
 
       # ── Log in to GitHub Container Registry ──────────────────────────────────
       # Teaching note: We skip login for pull requests because forked PRs don't
       # have access to secrets — this prevents security issues.
       - name: Log in to GitHub Container Registry
         if: github.event_name != 'pull_request'
-        uses: docker/login-action@v3
+        uses: docker/login-action@v4
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
@@ -78,7 +78,7 @@ jobs:
 
       # ── Build and push ────────────────────────────────────────────────────────
       - name: Build and push Docker image
-        uses: docker/build-push-action@v6
+        uses: docker/build-push-action@v7
         with:
           context: .
           # Build for both Intel and Apple Silicon / AWS Graviton

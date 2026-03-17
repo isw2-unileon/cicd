@@ -48,12 +48,12 @@ jobs:
     timeout-minutes: 10   # Teaching note: Kill the job if it runs > 10 minutes
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       # Teaching note: actions/setup-go has built-in caching since v4.
       # It caches the Go module download cache (~/.cache/go/mod) automatically.
       # On cache hit, `go mod download` is skipped entirely.
-      - uses: actions/setup-go@v5
+      - uses: actions/setup-go@v6
         with:
           go-version: ${{ env.GO_VERSION }}
           cache: true   # Enabled by default; shown explicitly for teaching
@@ -78,7 +78,7 @@ jobs:
       timestamp: ${{ steps.get-timestamp.outputs.timestamp }}
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       - name: Get version from git tag or default
         id: get-version
@@ -119,7 +119,7 @@ jobs:
     timeout-minutes: 5
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       # Teaching note: `if:` accepts GitHub Actions expressions.
       # Common patterns:

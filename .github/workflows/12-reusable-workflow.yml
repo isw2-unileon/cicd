@@ -56,9 +56,9 @@ jobs:
       coverage: ${{ steps.coverage.outputs.total }}
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
-      - uses: actions/setup-go@v5
+      - uses: actions/setup-go@v6
         with:
           go-version: ${{ inputs.go-version }}
 
@@ -80,11 +80,11 @@ jobs:
     runs-on: ubuntu-latest
     if: inputs.run-lint == true   # Only run if the caller asked for it
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-go@v5
+      - uses: actions/checkout@v6
+      - uses: actions/setup-go@v6
         with:
           go-version: ${{ inputs.go-version }}
           cache: false
-      - uses: golangci/golangci-lint-action@v6
+      - uses: golangci/golangci-lint-action@v9
         with:
           version: latest

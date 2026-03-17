@@ -37,13 +37,13 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       # ── Initialize CodeQL ───────────────────────────────────────────────────
       # This sets up the CodeQL database. The `languages` array lists which
       # languages to analyze. For a mixed repo, you can add multiple.
       - name: Initialize CodeQL
-        uses: github/codeql-action/init@v3
+        uses: github/codeql-action/init@v4
         with:
           languages: go
           # You can also specify a custom query suite:
@@ -53,13 +53,13 @@ jobs:
       # CodeQL needs to observe the build process to understand the code.
       # autobuild tries to build your code automatically.
       - name: Autobuild
-        uses: github/codeql-action/autobuild@v3
+        uses: github/codeql-action/autobuild@v4
 
       # ── Perform Analysis ────────────────────────────────────────────────────
       # This runs the analysis and uploads results to GitHub's Security tab.
       # Findings appear as "Code scanning alerts" in the repository.
       - name: Perform CodeQL Analysis
-        uses: github/codeql-action/analyze@v3
+        uses: github/codeql-action/analyze@v4
         with:
           category: "/language:go"
 
@@ -69,9 +69,9 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
-      - uses: actions/setup-go@v5
+      - uses: actions/setup-go@v6
         with:
           go-version-file: go.mod
 
