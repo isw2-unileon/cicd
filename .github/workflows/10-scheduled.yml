@@ -41,8 +41,8 @@ jobs:
     # cron OR a manual trigger. The weekly check has its own job below.
     if: github.event.schedule == '0 2 * * *' || github.event_name == 'workflow_dispatch'
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-go@v5
+      - uses: actions/checkout@v6
+      - uses: actions/setup-go@v6
         with:
           go-version-file: go.mod
       - name: Run full test suite
@@ -58,8 +58,8 @@ jobs:
     runs-on: ubuntu-latest
     if: github.event.schedule == '0 9 * * 1' || github.event_name == 'workflow_dispatch'
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-go@v5
+      - uses: actions/checkout@v6
+      - uses: actions/setup-go@v6
         with:
           go-version-file: go.mod
       - name: Check for outdated dependencies

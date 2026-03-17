@@ -40,8 +40,8 @@ jobs:
     name: Run Tests
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-go@v5
+      - uses: actions/checkout@v6
+      - uses: actions/setup-go@v6
         with:
           go-version-file: go.mod
       - run: go test ./...
@@ -52,8 +52,8 @@ jobs:
     needs: test   # Only runs if `test` succeeds
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-go@v5
+      - uses: actions/checkout@v6
+      - uses: actions/setup-go@v6
         with:
           go-version-file: go.mod
       - name: Build binary
@@ -61,7 +61,7 @@ jobs:
       # Teaching note: Artifacts pass files between jobs. The `deploy` jobs
       # below will download this binary without rebuilding from source.
       - name: Upload binary artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: server-binary
           path: bin/server
@@ -80,7 +80,7 @@ jobs:
 
     steps:
       - name: Download binary
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           name: server-binary
 
@@ -110,7 +110,7 @@ jobs:
 
     steps:
       - name: Download binary
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           name: server-binary
 
