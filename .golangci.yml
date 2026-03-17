@@ -1,9 +1,15 @@
 # ==============================================================================
-# golangci-lint configuration
+# golangci-lint configuration (v2 format)
 #
 # Teaching note: golangci-lint runs many linters simultaneously.
 # This file lets you enable/disable linters and configure their behavior.
+#
+# v2 breaking changes vs v1:
+#   - `version: "2"` is now required at the root
+#   - linter settings moved from top-level `linters-settings:` into `linters.settings:`
 # ==============================================================================
+
+version: "2"
 
 run:
   timeout: 5m
@@ -19,6 +25,3 @@ linters:
     - gofmt         # Checks code formatting
     - goimports     # Checks import grouping
 
-linters-settings:
-  gofmt:
-    simplify: true
