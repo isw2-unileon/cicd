@@ -17,7 +17,6 @@ run:
 linters:
   enable:
     - errcheck      # Check that errors are handled
-    - gosimple      # Suggest simpler code constructs
     - govet         # Reports suspicious constructs
     - ineffassign   # Detects ineffectual assignments
     - staticcheck   # Comprehensive static analysis

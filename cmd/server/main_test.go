@@ -289,7 +289,11 @@ func TestServerRoundTrip(t *testing.T) {
 			if err != nil {
 				t.Fatalf("do request: %v", err)
 			}
-			defer resp.Body.Close()
+			defer func() {
+				if err := resp.Body.Close(); err != nil {
+					t.Errorf("close response body: %v", err)
+				}
+			}()
 
 			if resp.StatusCode != tt.wantStatusCode {
 				t.Errorf("status = %d, want %d", resp.StatusCode, tt.wantStatusCode)
