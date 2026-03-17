@@ -7,6 +7,7 @@
 # v2 breaking changes vs v1:
 #   - `version: "2"` is now required at the root
 #   - linter settings moved from top-level `linters-settings:` into `linters.settings:`
+#   - formatters (gofmt, goimports) moved to a separate `formatters:` block
 # ==============================================================================
 
 version: "2"
@@ -16,16 +17,71 @@ run:
 
 linters:
   enable:
-    - errcheck      # Check that errors are handled
-    - govet         # Reports suspicious constructs
-    - ineffassign   # Detects ineffectual assignments
-    - staticcheck   # Comprehensive static analysis
-    - unused        # Finds unused code
+    # ── Correctness ────────────────────────────────────────────────────────────
+    - errcheck       # Unchecked error returns (common source of silent failures)
+    - govet          # Suspicious constructs (same as `go vet`)
+    - staticcheck    # 150+ checks: bugs, performance, style (includes gosimple, SA*)
+    - ineffassign    # Assignments whose value is never read
+    - unused         # Unused constants, variables, functions, and types
 
+    # ── Error handling ─────────────────────────────────────────────────────────
+    - errorlint      # Mistakes when wrapping errors (use errors.Is/As, not ==)
+    - err113         # Enforce defining sentinel errors with errors.New (not inline)
+
+    # ── Security ───────────────────────────────────────────────────────────────
+    - gosec          # Common security issues (G1xx–G6xx rule set)
+
+    # ── Bugs & suspicious patterns ─────────────────────────────────────────────
+    - bodyclose      # HTTP response bodies that are never closed (resource leak)
+    - copyloopvar    # Loop variable captured by reference in goroutine/closure
+    - noctx          # http.NewRequest calls without a context.Context
+
+    # ── Code style & maintainability ───────────────────────────────────────────
+    - gocritic       # 100+ opinionated checks: simplifications, style, diagnostics
+    - revive         # Drop-in golint replacement with more rules and auto-fixes
+    - godot          # Comments should end with a period
+    - misspell       # Correct common English spelling mistakes in comments/strings
+
+    # ── Complexity ─────────────────────────────────────────────────────────────
+    - gocognit       # Cognitive complexity — measures how hard code is to understand
+    - funlen         # Functions that are too long (encourages small, focused funcs)
+
+  settings:
+    # ── gosec ──────────────────────────────────────────────────────────────────
+    gosec:
+      excludes:
+        - G104  # Errors unhandled — already covered by errcheck
+
+    # ── gocritic ───────────────────────────────────────────────────────────────
+    gocritic:
+      enabled-tags:
+        - diagnostic   # Detects bugs and incorrect code patterns
+        - style        # Style improvements
+        - performance  # Performance anti-patterns
+
+    # ── revive ─────────────────────────────────────────────────────────────────
+    revive:
+      rules:
+        - name: exported           # Exported identifiers must have doc comments
+        - name: var-naming         # Variable names follow Go conventions
+        - name: error-return       # Error should be last return value
+        - name: error-strings      # Error strings should not be capitalised
+        - name: increment-decrement # Use i++ instead of i += 1
+
+    # ── gocognit ───────────────────────────────────────────────────────────────
+    gocognit:
+      min-complexity: 15  # Alert when a function's cognitive complexity exceeds 15
+
+    # ── funlen ─────────────────────────────────────────────────────────────────
+    funlen:
+      lines: 80       # Maximum lines per function
+      statements: 50  # Maximum statements per function
+
+# ── Per-path exclusions ────────────────────────────────────────────────────────
+# ── Formatters ─────────────────────────────────────────────────────────────────
 # Teaching note: in golangci-lint v2, formatters are a separate category
 # from linters. gofmt and goimports must be declared here, not under linters.
 formatters:
   enable:
-    - gofmt         # Checks code formatting
-    - goimports     # Checks import grouping
-
+    - gofmt      # Standard Go formatter
+    - goimports  # Formats imports and groups them (stdlib / external / internal)

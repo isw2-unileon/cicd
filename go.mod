@@ -1,3 +1,3 @@
 module github.com/isw2-unileon/cicd
 
-go 1.21
+go 1.24

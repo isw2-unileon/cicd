@@ -33,20 +33,20 @@ jobs:
       fail-fast: false
 
       matrix:
-        go-version: ['1.21', '1.22', '1.23']
+        go-version: ['1.24', '1.25', '1.26']
         os: [ubuntu-latest, macos-latest, windows-latest]
 
         # Teaching note: Use `exclude` to skip combinations that don't make
         # sense (e.g. old Go version on latest OS) to save CI minutes.
         # exclude:
         #   - os: windows-latest
-        #     go-version: '1.21'
+        #     go-version: '1.24'
 
         # Teaching note: Use `include` to add extra variables to specific
         # combinations, e.g. enable coverage only on the "primary" combination.
         include:
           - os: ubuntu-latest
-            go-version: '1.23'
+            go-version: '1.26'
             primary: true   # Custom variable — used in a conditional below
 
     runs-on: ${{ matrix.os }}

@@ -1,6 +1,7 @@
 package calculator_test
 
 import (
+	"errors"
 	"testing"
 
 	"github.com/isw2-unileon/cicd/internal/calculator"
@@ -84,7 +85,7 @@ func TestDivide(t *testing.T) {
 
 	t.Run("division by zero", func(t *testing.T) {
 		_, err := calculator.Divide(10, 0)
-		if err != calculator.ErrDivisionByZero {
+		if !errors.Is(err, calculator.ErrDivisionByZero) {
 			t.Errorf("Divide(10, 0) error = %v, want ErrDivisionByZero", err)
 		}
 	})

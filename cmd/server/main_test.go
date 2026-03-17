@@ -48,7 +48,7 @@ func TestHealthHandler(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			req := httptest.NewRequest(tt.method, "/health", nil)
+			req := httptest.NewRequestWithContext(t.Context(), tt.method, "/health", http.NoBody)
 			rec := httptest.NewRecorder()
 
 			healthHandler(rec, req)
@@ -75,7 +75,7 @@ func TestHealthHandler(t *testing.T) {
 
 // ── /calculate ────────────────────────────────────────────────────────────────
 
-func TestCalculateHandler(t *testing.T) {
+func TestCalculateHandler(t *testing.T) { //nolint:gocognit,funlen // table-driven test: complexity is structural, not accidental
 	tests := []struct {
 		name           string
 		method         string
@@ -186,7 +186,7 @@ func TestCalculateHandler(t *testing.T) {
 				reqBody = bytes.NewBuffer(data)
 			}
 
-			req := httptest.NewRequest(tt.method, "/calculate", reqBody)
+			req := httptest.NewRequestWithContext(t.Context(), tt.method, "/calculate", reqBody)
 			req.Header.Set("Content-Type", "application/json")
 			rec := httptest.NewRecorder()
 
@@ -227,7 +227,7 @@ func TestCalculateHandler(t *testing.T) {
 // and exercises the full stack with a genuine http.Client.
 // This catches issues that in-memory recorder tests cannot — e.g. middleware
 // that depends on the actual net.Conn, TLS, or real HTTP/1.1 framing.
-func TestServerRoundTrip(t *testing.T) {
+func TestServerRoundTrip(t *testing.T) { //nolint:gocognit,funlen // table-driven test: complexity is structural, not accidental
 	srv := httptest.NewServer(newHandler())
 	defer srv.Close()
 
@@ -279,7 +279,7 @@ func TestServerRoundTrip(t *testing.T) {
 				bodyBuf = bytes.NewBuffer(nil)
 			}
 
-			req, err := http.NewRequest(tt.method, srv.URL+tt.path, bodyBuf)
+			req, err := http.NewRequestWithContext(t.Context(), tt.method, srv.URL+tt.path, bodyBuf)
 			if err != nil {
 				t.Fatalf("new request: %v", err)
 			}

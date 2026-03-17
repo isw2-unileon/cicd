@@ -8,6 +8,7 @@ import (
 	"log/slog"
 	"net/http"
 	"os"
+	"time"
 
 	"github.com/isw2-unileon/cicd/internal/calculator"
 )
@@ -37,8 +38,20 @@ func main() {
 		port = "8080"
 	}
 
-	slog.Info("server starting", "port", port)
-	if err := http.ListenAndServe(":"+port, newHandler()); err != nil {
+	// Teaching note: always use http.Server instead of http.ListenAndServe.
+	// The bare function sets no timeouts, leaving the server vulnerable to
+	// slow-client attacks. ReadHeaderTimeout and WriteTimeout are the minimum
+	// you should set in any production service.
+	srv := &http.Server{
+		Addr:              ":" + port,
+		Handler:           newHandler(),
+		ReadHeaderTimeout: 5 * time.Second,
+		WriteTimeout:      10 * time.Second,
+		IdleTimeout:       60 * time.Second,
+	}
+
+	slog.Info("server starting", "port", port) //nolint:gosec // G706: port is trusted internal config
+	if err := srv.ListenAndServe(); err != nil {
 		slog.Error("server failed", "error", err)
 		os.Exit(1)
 	}
@@ -71,7 +84,7 @@ func calculateHandler(w http.ResponseWriter, r *http.Request) {
 
 	var req CalculateRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		slog.Warn("invalid request body", "error", err, "remote_addr", r.RemoteAddr)
+		slog.Warn("invalid request body", "error", err, "remote_addr", r.RemoteAddr) //nolint:gosec // G706: RemoteAddr is set by net/http, not user input
 		http.Error(w, "invalid request body", http.StatusBadRequest)
 		return
 	}

@@ -27,7 +27,7 @@ jobs:
     # `steps:`. The entire job is delegated to the reusable workflow.
     uses: ./.github/workflows/12-reusable-workflow.yml
     with:
-      go-version: '1.23'
+      go-version: '1.24'
       run-lint: true
     # secrets: inherit passes ALL secrets from this workflow's context
     # to the called workflow automatically.
