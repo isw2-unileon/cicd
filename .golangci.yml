@@ -1,0 +1,24 @@
+# ==============================================================================
+# golangci-lint configuration
+#
+# Teaching note: golangci-lint runs many linters simultaneously.
+# This file lets you enable/disable linters and configure their behavior.
+# ==============================================================================
+
+run:
+  timeout: 5m
+
+linters:
+  enable:
+    - errcheck      # Check that errors are handled
+    - gosimple      # Suggest simpler code constructs
+    - govet         # Reports suspicious constructs
+    - ineffassign   # Detects ineffectual assignments
+    - staticcheck   # Comprehensive static analysis
+    - unused        # Finds unused code
+    - gofmt         # Checks code formatting
+    - goimports     # Checks import grouping
+
+linters-settings:
+  gofmt:
+    simplify: true
