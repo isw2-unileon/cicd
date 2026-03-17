@@ -1,0 +1,155 @@
+# ==============================================================================
+# Workflow 14 — Advanced Features
+#
+# PURPOSE: A tour of advanced GitHub Actions features that make workflows more
+# robust, efficient, and production-ready.
+#
+# TOPICS COVERED:
+#   1. Dependency caching        → Cache Go modules to speed up builds
+#   2. Job concurrency           → Cancel in-progress runs when new one starts
+#   3. Timeouts                  → Kill runaway jobs automatically
+#   4. Conditional execution     → if: expressions and context functions
+#   5. Job outputs               → Pass data between jobs
+#   6. Environment variables     → repo-level, job-level, step-level
+#   7. Expressions & context     → github, env, secrets, steps, needs contexts
+# ==============================================================================
+
+name: 14 · Advanced Features
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+# ── Concurrency ────────────────────────────────────────────────────────────────
+# Teaching note: Without this, if you push 3 commits quickly, 3 workflow runs
+# start simultaneously. `concurrency` ensures only ONE run per group is active.
+#
+# group: a unique key per branch/PR — concurrent runs on DIFFERENT branches are fine.
+# cancel-in-progress: true → Cancel the old run when a new one starts.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+# ── Workflow-level environment variables ───────────────────────────────────────
+# Teaching note: Variables defined here are available in ALL jobs and steps.
+# Use them for shared configuration that doesn't change between jobs.
+env:
+  GO_VERSION: '1.23'
+  APP_NAME: 'calculator-api'
+  REGISTRY: 'ghcr.io'
+
+jobs:
+  # ── Job 1: Demonstrate caching ────────────────────────────────────────────────
+  caching:
+    name: Dependency Caching
+    runs-on: ubuntu-latest
+    timeout-minutes: 10   # Teaching note: Kill the job if it runs > 10 minutes
+
+    steps:
+      - uses: actions/checkout@v4
+
+      # Teaching note: actions/setup-go has built-in caching since v4.
+      # It caches the Go module download cache (~/.cache/go/mod) automatically.
+      # On cache hit, `go mod download` is skipped entirely.
+      - uses: actions/setup-go@v5
+        with:
+          go-version: ${{ env.GO_VERSION }}
+          cache: true   # Enabled by default; shown explicitly for teaching
+
+      - name: Show cache info
+        run: |
+          echo "Go module cache: $(go env GOMODCACHE)"
+          echo "Go build cache:  $(go env GOCACHE)"
+
+      - run: go build ./...
+
+  # ── Job 2: Demonstrate job outputs ────────────────────────────────────────────
+  compute:
+    name: Compute Values
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+
+    # Teaching note: Declare which step outputs become job outputs.
+    # Other jobs reference them via: ${{ needs.compute.outputs.version }}
+    outputs:
+      version: ${{ steps.get-version.outputs.version }}
+      timestamp: ${{ steps.get-timestamp.outputs.timestamp }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Get version from git tag or default
+        id: get-version
+        run: |
+          # Use the git tag if on a tag, otherwise use the short SHA
+          if [[ "$GITHUB_REF" == refs/tags/* ]]; then
+            VERSION="${GITHUB_REF#refs/tags/}"
+          else
+            VERSION="dev-$(git rev-parse --short HEAD)"
+          fi
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "Computed version: $VERSION"
+
+      - name: Get build timestamp
+        id: get-timestamp
+        run: |
+          TS=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
+          echo "timestamp=$TS" >> $GITHUB_OUTPUT
+          echo "Timestamp: $TS"
+
+  # ── Job 3: Use the outputs from Job 2 ────────────────────────────────────────
+  use-outputs:
+    name: Use Job Outputs
+    needs: compute   # Runs after `compute` completes
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+
+    steps:
+      - name: Use version and timestamp
+        run: |
+          echo "Version   : ${{ needs.compute.outputs.version }}"
+          echo "Timestamp : ${{ needs.compute.outputs.timestamp }}"
+
+  # ── Job 4: Conditional execution ──────────────────────────────────────────────
+  conditional:
+    name: Conditional Steps
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+
+    steps:
+      - uses: actions/checkout@v4
+
+      # Teaching note: `if:` accepts GitHub Actions expressions.
+      # Common patterns:
+      #   github.event_name == 'push'     → Only on push events
+      #   github.ref == 'refs/heads/main' → Only on the main branch
+      #   github.actor == 'username'      → Only when triggered by a user
+      #   contains(github.ref, 'release') → When the branch name contains "release"
+      #   always()                        → Run even if previous steps failed
+      #   failure()                       → Only run if a previous step failed
+      #   success()                       → Only run if all previous steps passed (default)
+
+      - name: Only runs on push to main
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        run: echo "This is a push to main branch"
+
+      - name: Only runs on pull requests
+        if: github.event_name == 'pull_request'
+        run: echo "This is a pull request from ${{ github.head_ref }}"
+
+      - name: Always runs (even after failure)
+        if: always()
+        run: echo "I always run — useful for cleanup"
+
+      - name: Simulated failure
+        id: might-fail
+        run: |
+          echo "Simulating a successful step..."
+          # Uncomment the next line to simulate a failure:
+          # exit 1
+
+      - name: Only runs if previous step failed
+        if: failure() && steps.might-fail.outcome == 'failure'
+        run: echo "The previous step failed! Sending alert..."

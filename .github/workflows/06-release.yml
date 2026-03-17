@@ -1,0 +1,93 @@
+# ==============================================================================
+# Workflow 06 — Automated Releases
+#
+# PURPOSE: When a developer pushes a Git tag like `v1.2.3`, automatically:
+#   1. Build binaries for Linux, macOS, and Windows
+#   2. Create a GitHub Release
+#   3. Upload all binaries as downloadable release assets
+#
+# This is the CD (Continuous Delivery) half of CI/CD.
+#
+# KEY CONCEPTS:
+#   - Tag-triggered workflows → Only runs when a vX.Y.Z tag is pushed
+#   - Cross-compilation       → Go can build for any OS from any OS (GOOS/GOARCH)
+#   - GitHub Releases         → Tagged snapshots with downloadable assets
+#   - Permissions             → Workflows need explicit permission to create releases
+#   - GITHUB_TOKEN            → A short-lived token auto-injected by GitHub
+# ==============================================================================
+
+name: 06 · Release
+
+on:
+  push:
+    # Teaching note: This workflow ONLY runs when a tag matching v*.*.* is pushed.
+    # Normal branch pushes do NOT trigger it.
+    tags:
+      - 'v*.*.*'   # matches v1.0.0, v2.3.1, v0.0.1-beta, etc.
+
+# ── Permissions ───────────────────────────────────────────────────────────────
+# By default, GITHUB_TOKEN has read-only access. We need write access to
+# create a release and upload assets.
+permissions:
+  contents: write
+
+jobs:
+  release:
+    name: Build & Release
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0   # Fetch all history so we can generate a changelog
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+
+      # ── Extract tag name ──────────────────────────────────────────────────────
+      # github.ref looks like "refs/tags/v1.2.3" — we strip the prefix to get
+      # just "v1.2.3" for use in file names and the release title.
+      - name: Get tag version
+        id: version
+        run: echo "tag=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
+
+      # ── Cross-compile for all platforms ──────────────────────────────────────
+      # Teaching note: Go's cross-compilation is amazing. From a single Linux
+      # runner we can produce native binaries for every supported OS/arch.
+      - name: Build binaries
+        run: |
+          VERSION=${{ steps.version.outputs.tag }}
+
+          # Linux (AMD64)
+          GOOS=linux   GOARCH=amd64 go build -o dist/server-linux-amd64   ./cmd/server
+          # Linux (ARM64 — e.g. AWS Graviton, Raspberry Pi)
+          GOOS=linux   GOARCH=arm64 go build -o dist/server-linux-arm64   ./cmd/server
+          # macOS (Intel)
+          GOOS=darwin  GOARCH=amd64 go build -o dist/server-darwin-amd64  ./cmd/server
+          # macOS (Apple Silicon)
+          GOOS=darwin  GOARCH=arm64 go build -o dist/server-darwin-arm64  ./cmd/server
+          # Windows
+          GOOS=windows GOARCH=amd64 go build -o dist/server-windows-amd64.exe ./cmd/server
+
+          ls -lh dist/
+
+      # ── Create the GitHub Release and upload assets ───────────────────────────
+      # gh (GitHub CLI) is pre-installed on all GitHub-hosted runners.
+      - name: Create GitHub Release
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          VERSION=${{ steps.version.outputs.tag }}
+
+          # Generate a simple changelog from git log
+          CHANGELOG=$(git log --pretty=format:"- %s (%h)" $(git describe --tags --abbrev=0 HEAD^)..HEAD 2>/dev/null || echo "- Initial release")
+
+          gh release create "$VERSION" \
+            --title "Release $VERSION" \
+            --notes "$CHANGELOG" \
+            dist/server-linux-amd64 \
+            dist/server-linux-arm64 \
+            dist/server-darwin-amd64 \
+            dist/server-darwin-arm64 \
+            dist/server-windows-amd64.exe

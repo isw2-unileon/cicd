@@ -1,0 +1,44 @@
+# ==============================================================================
+# Workflow 13 — Calling a Reusable Workflow
+#
+# PURPOSE: Demonstrate how to CALL the reusable workflow defined in
+# 12-reusable-workflow.yml. This is like calling a function in code.
+#
+# KEY CONCEPTS:
+#   - uses: ./.github/workflows/...  → Call a local reusable workflow
+#   - uses: org/repo/.github/...     → Call a workflow from ANOTHER repo
+#   - with:                          → Pass inputs to the called workflow
+#   - secrets: inherit               → Pass all secrets without listing them
+#   - needs:                         → Wait for the called workflow's outputs
+# ==============================================================================
+
+name: 13 · Call Reusable Workflow
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  # ── Call the reusable workflow ────────────────────────────────────────────────
+  ci:
+    # Teaching note: `uses:` with a workflow path REPLACES `runs-on:` and
+    # `steps:`. The entire job is delegated to the reusable workflow.
+    uses: ./.github/workflows/12-reusable-workflow.yml
+    with:
+      go-version: '1.23'
+      run-lint: true
+    # secrets: inherit passes ALL secrets from this workflow's context
+    # to the called workflow automatically.
+    secrets: inherit
+
+  # ── Use the output from the reusable workflow ─────────────────────────────────
+  report:
+    name: Coverage Report
+    needs: ci   # Wait for the `ci` job (the reusable workflow) to finish
+    runs-on: ubuntu-latest
+    steps:
+      - name: Print coverage from reusable workflow
+        run: |
+          echo "Coverage reported by reusable workflow: ${{ needs.ci.outputs.coverage }}"

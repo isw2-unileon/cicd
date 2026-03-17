@@ -1,0 +1,90 @@
+# ==============================================================================
+# Workflow 12 — Reusable Workflow (the CALLED workflow)
+#
+# PURPOSE: Define a workflow that OTHER workflows can call like a function.
+# This prevents copy-pasting the same jobs across many workflow files.
+#
+# KEY CONCEPTS:
+#   - workflow_call         → Makes this workflow callable by other workflows
+#   - inputs/outputs        → Parameters passed in and results returned
+#   - secrets: inherit      → Pass secrets through without naming them explicitly
+#
+# HOW TO USE: See 13-call-reusable.yml for how to call this workflow.
+# ==============================================================================
+
+name: 12 · Reusable — Go CI
+
+on:
+  # Teaching note: `workflow_call` is the trigger that makes this a
+  # REUSABLE workflow. It will NOT appear as a standalone run trigger.
+  workflow_call:
+    # ── Inputs ──────────────────────────────────────────────────────────────
+    # The calling workflow passes these values in.
+    inputs:
+      go-version:
+        description: 'Go version to use'
+        type: string
+        default: '1.23'
+      run-lint:
+        description: 'Whether to run golangci-lint'
+        type: boolean
+        default: true
+
+    # ── Outputs ─────────────────────────────────────────────────────────────
+    # The calling workflow can read these after this workflow completes.
+    outputs:
+      coverage:
+        description: 'Total test coverage percentage'
+        value: ${{ jobs.test.outputs.coverage }}
+
+    # ── Secrets ─────────────────────────────────────────────────────────────
+    # List secrets this workflow needs. The caller passes them explicitly,
+    # OR you can use `secrets: inherit` in the caller to pass all secrets.
+    secrets:
+      CODECOV_TOKEN:
+        required: false
+
+jobs:
+  test:
+    name: Test (Go ${{ inputs.go-version }})
+    runs-on: ubuntu-latest
+
+    # ── Job outputs ───────────────────────────────────────────────────────────
+    # Map step outputs to job outputs so the workflow-level outputs can
+    # reference them.
+    outputs:
+      coverage: ${{ steps.coverage.outputs.total }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version: ${{ inputs.go-version }}
+
+      - name: Build
+        run: go build ./...
+
+      - name: Test with coverage
+        run: go test -coverprofile=coverage.out ./...
+
+      - name: Extract coverage total
+        id: coverage
+        run: |
+          TOTAL=$(go tool cover -func=coverage.out | grep "^total" | awk '{print $3}')
+          echo "total=$TOTAL" >> $GITHUB_OUTPUT
+          echo "Coverage: $TOTAL"
+
+  lint:
+    name: Lint
+    runs-on: ubuntu-latest
+    if: inputs.run-lint == true   # Only run if the caller asked for it
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: ${{ inputs.go-version }}
+          cache: false
+      - uses: golangci/golangci-lint-action@v6
+        with:
+          version: latest

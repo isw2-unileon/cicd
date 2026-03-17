@@ -1,0 +1,73 @@
+# ==============================================================================
+# Workflow 04 — Test Coverage
+#
+# PURPOSE: Measure how much of our code is tested and make that metric visible
+# to the whole team on every pull request.
+#
+# KEY CONCEPTS:
+#   - Coverage profiles     → go test -coverprofile produces a .out file
+#   - Artifacts             → Files produced by a job that can be downloaded
+#   - Job summaries         → Write custom markdown to the GitHub Actions UI
+#   - Codecov / Coveralls   → External services that track coverage over time
+# ==============================================================================
+
+name: 04 · Test Coverage
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  coverage:
+    name: Coverage Report
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+
+      # ── Run tests and collect coverage data ──────────────────────────────────
+      - name: Run tests with coverage
+        run: |
+          go test -coverprofile=coverage.out -covermode=atomic ./...
+
+      # ── Print a text summary to the terminal ─────────────────────────────────
+      - name: Print coverage summary
+        run: go tool cover -func=coverage.out
+
+      # ── Generate an HTML report ───────────────────────────────────────────────
+      - name: Generate HTML coverage report
+        run: go tool cover -html=coverage.out -o coverage.html
+
+      # ── Upload as a workflow artifact ─────────────────────────────────────────
+      # Teaching note: Artifacts persist after the job ends. Team members can
+      # download the HTML file from the GitHub Actions UI and open it in a
+      # browser to see exactly which lines are covered.
+      - name: Upload coverage report
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-report
+          path: |
+            coverage.out
+            coverage.html
+          retention-days: 7   # Keep artifacts for 7 days, then auto-delete
+
+      # ── Write a summary to the GitHub Actions UI ─────────────────────────────
+      # Teaching note: $GITHUB_STEP_SUMMARY is a special file. Whatever you
+      # write to it appears as formatted markdown in the workflow summary page.
+      - name: Write job summary
+        run: |
+          echo "## Test Coverage Report 📊" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "| Package | Coverage |" >> $GITHUB_STEP_SUMMARY
+          echo "|---------|----------|" >> $GITHUB_STEP_SUMMARY
+          go tool cover -func=coverage.out | grep -v "^total" | \
+            awk '{print "| " $1 " | " $3 " |"}' >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          TOTAL=$(go tool cover -func=coverage.out | grep "^total" | awk '{print $3}')
+          echo "**Total coverage: $TOTAL**" >> $GITHUB_STEP_SUMMARY

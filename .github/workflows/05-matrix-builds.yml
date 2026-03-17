@@ -1,0 +1,75 @@
+# ==============================================================================
+# Workflow 05 — Matrix Builds
+#
+# PURPOSE: Test the code on multiple Go versions and operating systems in
+# PARALLEL with a single job definition. This catches the classic
+# "works on my machine" problem before it reaches production.
+#
+# KEY CONCEPTS:
+#   - matrix strategy       → Generates N jobs from a single job template
+#   - Parallelism           → All matrix combinations run at the same time
+#   - fail-fast             → Whether to cancel remaining jobs if one fails
+#   - include/exclude       → Fine-tune which combinations to run
+# ==============================================================================
+
+name: 05 · Matrix Builds
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  test:
+    name: Test (Go ${{ matrix.go-version }} · ${{ matrix.os }})
+
+    # ── Matrix strategy ───────────────────────────────────────────────────────
+    # GitHub Actions generates one job per COMBINATION of values.
+    # With 3 Go versions × 3 OS = 9 parallel jobs.
+    strategy:
+      # fail-fast: true  → Cancel all remaining jobs if ANY job fails (default)
+      # fail-fast: false → Let all jobs finish even if one fails
+      fail-fast: false
+
+      matrix:
+        go-version: ['1.21', '1.22', '1.23']
+        os: [ubuntu-latest, macos-latest, windows-latest]
+
+        # Teaching note: Use `exclude` to skip combinations that don't make
+        # sense (e.g. old Go version on latest OS) to save CI minutes.
+        # exclude:
+        #   - os: windows-latest
+        #     go-version: '1.21'
+
+        # Teaching note: Use `include` to add extra variables to specific
+        # combinations, e.g. enable coverage only on the "primary" combination.
+        include:
+          - os: ubuntu-latest
+            go-version: '1.23'
+            primary: true   # Custom variable — used in a conditional below
+
+    runs-on: ${{ matrix.os }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Go ${{ matrix.go-version }}
+        uses: actions/setup-go@v5
+        with:
+          go-version: ${{ matrix.go-version }}
+
+      - name: Build
+        run: go build ./...
+
+      - name: Test
+        run: go test -race -count=1 ./...
+
+      # Teaching note: The `if:` condition lets you run a step ONLY for
+      # specific matrix combinations. Here we only generate the coverage
+      # report for the "primary" Ubuntu + latest Go combination.
+      - name: Coverage (primary only)
+        if: matrix.primary == true
+        run: |
+          go test -coverprofile=coverage.out ./...
+          go tool cover -func=coverage.out

@@ -1,0 +1,99 @@
+# ==============================================================================
+# Workflow 09 — Manual Workflows & Inputs
+#
+# PURPOSE: Show how to create workflows that humans trigger manually with
+# custom inputs. Useful for: database migrations, cache busting, one-off
+# maintenance tasks, or deployments to specific environments.
+#
+# KEY CONCEPTS:
+#   - workflow_dispatch      → Manual trigger from the GitHub Actions UI
+#   - inputs                 → Typed parameters (string, boolean, choice, number)
+#   - Accessing inputs       → ${{ inputs.my_input }}
+#   - Conditional steps      → Run steps only when certain inputs are set
+# ==============================================================================
+
+name: 09 · Manual Workflow
+
+on:
+  workflow_dispatch:
+    # Teaching note: Define inputs that the user must fill in the GitHub UI
+    # before clicking "Run workflow". Each input has a type and optional default.
+    inputs:
+      environment:
+        description: 'Target environment'
+        required: true
+        default: 'staging'
+        type: choice
+        options:
+          - staging
+          - production
+
+      version:
+        description: 'Version to deploy (e.g. v1.2.3 or "latest")'
+        required: true
+        default: 'latest'
+        type: string
+
+      run_migrations:
+        description: 'Run database migrations after deploying?'
+        required: false
+        default: false
+        type: boolean
+
+      log_level:
+        description: 'Application log level'
+        required: false
+        default: 'info'
+        type: choice
+        options:
+          - debug
+          - info
+          - warn
+          - error
+
+jobs:
+  manual-deploy:
+    name: Manual Deploy
+    runs-on: ubuntu-latest
+
+    # Teaching note: Use the environment input to link to a GitHub Environment.
+    # This applies its protection rules (required reviewers, etc.).
+    environment: ${{ inputs.environment }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Show inputs
+        run: |
+          echo "== Workflow Inputs =="
+          echo "Environment    : ${{ inputs.environment }}"
+          echo "Version        : ${{ inputs.version }}"
+          echo "Run migrations : ${{ inputs.run_migrations }}"
+          echo "Log level      : ${{ inputs.log_level }}"
+          echo "Triggered by   : ${{ github.actor }}"
+
+      - name: Simulate deployment
+        run: |
+          echo "Deploying version '${{ inputs.version }}' to ${{ inputs.environment }}..."
+          sleep 2
+          echo "✅ Deployment complete"
+
+      # Teaching note: `if:` lets you skip a step based on an input value.
+      # This step only runs if the user checked the "run migrations" box.
+      - name: Run database migrations
+        if: inputs.run_migrations == true
+        run: |
+          echo "Running database migrations..."
+          sleep 1
+          echo "✅ Migrations complete"
+
+      - name: Write summary
+        run: |
+          echo "## Manual Deployment 🎛️" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "| Input | Value |" >> $GITHUB_STEP_SUMMARY
+          echo "|-------|-------|" >> $GITHUB_STEP_SUMMARY
+          echo "| Environment | ${{ inputs.environment }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Version | ${{ inputs.version }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Migrations ran | ${{ inputs.run_migrations }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Triggered by | @${{ github.actor }} |" >> $GITHUB_STEP_SUMMARY

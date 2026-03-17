@@ -1,0 +1,132 @@
+# ==============================================================================
+# Workflow 08 — Environments & Deployment
+#
+# PURPOSE: Show a complete deployment pipeline with:
+#   - Staging environment (auto-deploy on merge to main)
+#   - Production environment (requires manual approval)
+#   - Environment-specific secrets and variables
+#   - Deployment status shown on commits and PRs
+#
+# KEY CONCEPTS:
+#   - Environments          → Named targets (staging, production) with rules
+#   - Protection rules      → Required reviewers, wait timers, branch filters
+#   - environment: secrets  → Secrets scoped to a specific environment
+#   - Deployment status     → GitHub shows deployments on the repo home page
+#   - Sequential jobs       → Use `needs:` to enforce order
+#
+# SETUP REQUIRED:
+#   Before this workflow works, create environments in GitHub:
+#   Repository → Settings → Environments → New environment
+#   Add "staging" and "production", then add protection rules to production.
+# ==============================================================================
+
+name: 08 · Environments & Deploy
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Target environment'
+        required: true
+        default: 'staging'
+        type: choice
+        options: [staging, production]
+
+jobs:
+  # ── Job 1: Run tests before deploying ────────────────────────────────────────
+  test:
+    name: Run Tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+      - run: go test ./...
+
+  # ── Job 2: Build the artifact ─────────────────────────────────────────────────
+  build:
+    name: Build
+    needs: test   # Only runs if `test` succeeds
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+      - name: Build binary
+        run: go build -o bin/server ./cmd/server
+      # Teaching note: Artifacts pass files between jobs. The `deploy` jobs
+      # below will download this binary without rebuilding from source.
+      - name: Upload binary artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: server-binary
+          path: bin/server
+
+  # ── Job 3: Deploy to Staging ──────────────────────────────────────────────────
+  deploy-staging:
+    name: Deploy → Staging
+    needs: build
+    runs-on: ubuntu-latest
+
+    # Teaching note: The `environment:` key links this job to a GitHub Environment.
+    # GitHub tracks deployment history and shows status badges on the repo.
+    environment:
+      name: staging
+      url: https://staging.example.com   # Shown as a link in the deployment panel
+
+    steps:
+      - name: Download binary
+        uses: actions/download-artifact@v4
+        with:
+          name: server-binary
+
+      - name: Deploy to staging
+        # Teaching note: In a real project this step would SSH into a server,
+        # call a Kubernetes API, update a cloud function, etc.
+        # Here we simulate it with echo commands.
+        run: |
+          echo "Deploying to STAGING environment..."
+          echo "Using secret: ${{ secrets.DEPLOY_KEY }}"  # Secret from the environment
+          echo "App URL: https://staging.example.com"
+          echo "Commit: ${{ github.sha }}"
+          echo "✅ Staging deployment complete!"
+
+  # ── Job 4: Deploy to Production ───────────────────────────────────────────────
+  deploy-production:
+    name: Deploy → Production
+    needs: deploy-staging   # Must deploy to staging FIRST
+    runs-on: ubuntu-latest
+
+    # Teaching note: The production environment has REQUIRED REVIEWERS configured
+    # in GitHub Settings. The workflow will PAUSE here and send a notification
+    # asking a reviewer to approve before the job runs.
+    environment:
+      name: production
+      url: https://example.com
+
+    steps:
+      - name: Download binary
+        uses: actions/download-artifact@v4
+        with:
+          name: server-binary
+
+      - name: Deploy to production
+        run: |
+          echo "Deploying to PRODUCTION environment..."
+          echo "App URL: https://example.com"
+          echo "Commit: ${{ github.sha }}"
+          echo "✅ Production deployment complete!"
+
+      - name: Write deployment summary
+        run: |
+          echo "## Deployment Summary 🚀" >> $GITHUB_STEP_SUMMARY
+          echo "| Field | Value |" >> $GITHUB_STEP_SUMMARY
+          echo "|-------|-------|" >> $GITHUB_STEP_SUMMARY
+          echo "| Environment | Production |" >> $GITHUB_STEP_SUMMARY
+          echo "| Commit | \`${{ github.sha }}\` |" >> $GITHUB_STEP_SUMMARY
+          echo "| Deployed by | @${{ github.actor }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| URL | https://example.com |" >> $GITHUB_STEP_SUMMARY

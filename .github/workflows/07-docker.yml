@@ -1,0 +1,93 @@
+# ==============================================================================
+# Workflow 07 — Docker Build & Push
+#
+# PURPOSE: Build a Docker image and push it to GitHub Container Registry (ghcr.io).
+# The image is tagged with the branch name, commit SHA, and (if a tag) version.
+#
+# KEY CONCEPTS:
+#   - GitHub Container Registry (ghcr.io) → Free image registry for GitHub repos
+#   - Docker layer caching                → Speed up builds by reusing unchanged layers
+#   - Image metadata/labels               → OCI standard labels (author, source, etc.)
+#   - Multi-platform builds               → Build for linux/amd64 AND linux/arm64
+#   - Tagging strategy                    → How to version Docker images
+# ==============================================================================
+
+name: 07 · Docker
+
+on:
+  push:
+    branches: [main]
+    tags: ['v*.*.*']
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+# ── Permissions ────────────────────────────────────────────────────────────────
+# We need write access to packages to push images to ghcr.io
+permissions:
+  contents: read
+  packages: write
+
+jobs:
+  docker:
+    name: Build & Push Image
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      # ── Extract metadata for tags and labels ──────────────────────────────────
+      # docker/metadata-action computes smart image tags based on the trigger:
+      #   - Push to main    → latest, main, sha-abc1234
+      #   - Push tag v1.2.3 → 1.2.3, 1.2, 1, latest
+      #   - Pull request    → pr-42 (not pushed to registry)
+      - name: Extract Docker metadata
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ghcr.io/${{ github.repository }}
+          tags: |
+            type=ref,event=branch
+            type=ref,event=pr
+            type=semver,pattern={{version}}
+            type=semver,pattern={{major}}.{{minor}}
+            type=sha
+
+      # ── Set up QEMU (for multi-platform builds) ───────────────────────────────
+      # QEMU emulates other CPU architectures so we can build ARM64 images
+      # from an AMD64 runner.
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
+
+      # ── Set up Docker Buildx ──────────────────────────────────────────────────
+      # Buildx is the modern Docker build backend. It's required for
+      # multi-platform builds and build cache exports.
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      # ── Log in to GitHub Container Registry ──────────────────────────────────
+      # Teaching note: We skip login for pull requests because forked PRs don't
+      # have access to secrets — this prevents security issues.
+      - name: Log in to GitHub Container Registry
+        if: github.event_name != 'pull_request'
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      # ── Build and push ────────────────────────────────────────────────────────
+      - name: Build and push Docker image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          # Build for both Intel and Apple Silicon / AWS Graviton
+          platforms: linux/amd64,linux/arm64
+          # Only push if this is NOT a pull request
+          push: ${{ github.event_name != 'pull_request' }}
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          # Teaching note: GitHub Actions cache speeds up Docker builds by
+          # reusing layers from previous runs. Saves minutes on every push.
+          cache-from: type=gha
+          cache-to: type=gha,mode=max

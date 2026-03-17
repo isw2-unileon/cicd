@@ -1,0 +1,61 @@
+# ==============================================================================
+# Custom Composite Action — Setup Go Project
+#
+# PURPOSE: Bundle the 3 steps that every Go workflow repeats (checkout, setup-go,
+# verify deps) into a single reusable action.
+#
+# KEY CONCEPTS:
+#   - Composite actions     → Chain multiple steps into one `uses:` call
+#   - action.yml            → The metadata file that defines the action
+#   - inputs/outputs        → Typed parameters for the action
+#   - Local actions         → actions stored in the SAME repo under .github/actions/
+#   - Published actions     → Actions published to the GitHub Marketplace
+#
+# HOW TO USE in a workflow step:
+#   - name: Setup project
+#     uses: ./.github/actions/setup-go-project
+#     with:
+#       go-version: '1.23'
+# ==============================================================================
+
+name: 'Setup Go Project'
+description: 'Checkout repo, install Go, and verify dependencies — all in one step'
+
+# ── Inputs ─────────────────────────────────────────────────────────────────────
+inputs:
+  go-version:
+    description: 'Go version to install. Defaults to version in go.mod'
+    required: false
+    default: ''
+  verify-deps:
+    description: 'Whether to run go mod verify'
+    required: false
+    default: 'true'
+
+# ── Outputs ────────────────────────────────────────────────────────────────────
+outputs:
+  go-version:
+    description: 'The installed Go version'
+    value: ${{ steps.setup-go.outputs.go-version }}
+
+# ── Steps ──────────────────────────────────────────────────────────────────────
+# `using: composite` means this action runs a series of steps, not a Docker
+# container or custom JavaScript binary.
+runs:
+  using: 'composite'
+  steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+
+    - name: Set up Go
+      id: setup-go
+      uses: actions/setup-go@v5
+      with:
+        # If the caller passed a go-version, use it. Otherwise read from go.mod.
+        go-version: ${{ inputs.go-version != '' && inputs.go-version || '' }}
+        go-version-file: ${{ inputs.go-version == '' && 'go.mod' || '' }}
+
+    - name: Verify dependencies
+      if: inputs.verify-deps == 'true'
+      shell: bash
+      run: go mod verify

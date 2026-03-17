@@ -1,0 +1,92 @@
+# ==============================================================================
+# Workflow 03 — Code Quality
+#
+# PURPOSE: Enforce code style and catch bugs automatically. Nobody likes code
+# review comments about formatting — let machines handle the boring stuff.
+#
+# KEY CONCEPTS:
+#   - golangci-lint         → Runs dozens of linters in one tool
+#   - go vet                → Built-in static analysis (finds common mistakes)
+#   - gofmt                 → Go's standard code formatter
+#   - Failing fast          → Short, cheap checks run before expensive ones
+#   - Path filters          → Only run when Go files actually change
+# ==============================================================================
+
+name: 03 · Code Quality
+
+on:
+  push:
+    branches: [main]
+    paths:
+      # Teaching note: `paths` makes the workflow ONLY trigger when these files
+      # change. No point running lint if only the README was updated.
+      - '**.go'
+      - 'go.mod'
+      - 'go.sum'
+      - '.golangci.yml'
+  pull_request:
+    paths:
+      - '**.go'
+      - 'go.mod'
+      - 'go.sum'
+      - '.golangci.yml'
+  workflow_dispatch:
+
+jobs:
+  # ── Job 1: go vet ────────────────────────────────────────────────────────────
+  # go vet is fast and catches real bugs (e.g. wrong Printf format verbs).
+  # Run it first so we get feedback quickly.
+  vet:
+    name: go vet
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+      - name: Run go vet
+        run: go vet ./...
+
+  # ── Job 2: Format check ──────────────────────────────────────────────────────
+  # gofmt is Go's opinionated formatter. All Go code MUST be formatted with it.
+  # This job fails if any file is not properly formatted.
+  format:
+    name: gofmt
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+      - name: Check formatting
+        run: |
+          # gofmt -l lists files that need formatting. If any exist, fail.
+          UNFORMATTED=$(gofmt -l .)
+          if [ -n "$UNFORMATTED" ]; then
+            echo "The following files are not formatted with gofmt:"
+            echo "$UNFORMATTED"
+            echo ""
+            echo "Run 'make fmt' or 'gofmt -w .' to fix."
+            exit 1
+          fi
+          echo "All files are correctly formatted ✓"
+
+  # ── Job 3: golangci-lint ─────────────────────────────────────────────────────
+  # golangci-lint runs many linters in parallel: staticcheck, errcheck,
+  # gosimple, unused, and many more. See .golangci.yml for configuration.
+  lint:
+    name: golangci-lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          cache: false   # golangci-lint manages its own cache below
+
+      - name: Run golangci-lint
+        uses: golangci/golangci-lint-action@v6
+        with:
+          version: latest
+          # Teaching note: golangci-lint-action automatically caches the lint
+          # results and binary, making repeated runs much faster.

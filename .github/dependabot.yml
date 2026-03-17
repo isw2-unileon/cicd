@@ -1,0 +1,48 @@
+# ==============================================================================
+# Dependabot Configuration
+#
+# PURPOSE: Dependabot automatically opens pull requests when your dependencies
+# have newer versions available. It's a key part of keeping software secure
+# without manual effort.
+#
+# KEY CONCEPTS:
+#   - package-ecosystem     → Which package manager to watch
+#   - directory             → Where the package manifest lives
+#   - schedule              → How often to check for updates
+#   - groups                → Batch multiple updates into a single PR
+#   - ignore                → Skip specific packages or version ranges
+# ==============================================================================
+
+version: 2
+
+updates:
+  # ── Go modules ──────────────────────────────────────────────────────────────
+  - package-ecosystem: gomod
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+      time: "09:00"
+      timezone: "Europe/Madrid"
+    # Teaching note: Without groups, Dependabot opens one PR per dependency.
+    # With groups, minor/patch updates are batched into a single PR.
+    groups:
+      minor-and-patch:
+        update-types:
+          - minor
+          - patch
+
+  # ── GitHub Actions ──────────────────────────────────────────────────────────
+  # Teaching note: Actions are also dependencies! If actions/checkout has a
+  # security fix, Dependabot will open a PR to update your workflows.
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+      time: "09:00"
+      timezone: "Europe/Madrid"
+    groups:
+      actions:
+        patterns:
+          - "*"

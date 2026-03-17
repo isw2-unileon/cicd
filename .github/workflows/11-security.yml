@@ -1,0 +1,85 @@
+# ==============================================================================
+# Workflow 11 — Security Scanning
+#
+# PURPOSE: Automatically find security vulnerabilities in code and dependencies.
+# Security should be built into the pipeline, not bolted on at the end — this
+# is called "shifting left" on security.
+#
+# KEY CONCEPTS:
+#   - CodeQL               → GitHub's static analysis engine (finds code bugs)
+#   - govulncheck          → Scans Go dependencies for known CVEs
+#   - SARIF format         → Standard format for security scan results
+#   - Security tab         → Results appear in GitHub's Security tab
+#   - Dependabot           → Configured in .github/dependabot.yml (separate)
+# ==============================================================================
+
+name: 11 · Security
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  schedule:
+    - cron: '0 3 * * 1'   # Weekly on Monday at 03:00 UTC
+  workflow_dispatch:
+
+permissions:
+  # Required for CodeQL to upload SARIF results to the Security tab
+  security-events: write
+  contents: read
+  actions: read
+
+jobs:
+  # ── Job 1: CodeQL Static Analysis ────────────────────────────────────────────
+  codeql:
+    name: CodeQL Analysis
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      # ── Initialize CodeQL ───────────────────────────────────────────────────
+      # This sets up the CodeQL database. The `languages` array lists which
+      # languages to analyze. For a mixed repo, you can add multiple.
+      - name: Initialize CodeQL
+        uses: github/codeql-action/init@v3
+        with:
+          languages: go
+          # You can also specify a custom query suite:
+          # queries: security-extended
+
+      # ── Autobuild ───────────────────────────────────────────────────────────
+      # CodeQL needs to observe the build process to understand the code.
+      # autobuild tries to build your code automatically.
+      - name: Autobuild
+        uses: github/codeql-action/autobuild@v3
+
+      # ── Perform Analysis ────────────────────────────────────────────────────
+      # This runs the analysis and uploads results to GitHub's Security tab.
+      # Findings appear as "Code scanning alerts" in the repository.
+      - name: Perform CodeQL Analysis
+        uses: github/codeql-action/analyze@v3
+        with:
+          category: "/language:go"
+
+  # ── Job 2: Dependency Vulnerability Scan ──────────────────────────────────────
+  govulncheck:
+    name: Go Vulnerability Check
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+
+      # Teaching note: govulncheck is the official Go tool for checking whether
+      # your code ACTUALLY CALLS the vulnerable functions in a dependency —
+      # not just whether you depend on a vulnerable version. This reduces noise.
+      - name: Run govulncheck
+        uses: golang/govulncheck-action@v1
+        with:
+          go-version-file: go.mod
+          go-package: ./...

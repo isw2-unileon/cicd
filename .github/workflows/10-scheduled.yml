@@ -1,0 +1,73 @@
+# ==============================================================================
+# Workflow 10 — Scheduled (Cron) Workflows
+#
+# PURPOSE: Run workflows automatically on a schedule. Useful for:
+#   - Nightly test runs (catch flaky tests)
+#   - Dependency update checks
+#   - Database backups
+#   - Health checks / smoke tests against production
+#   - Sending weekly reports
+#
+# KEY CONCEPTS:
+#   - schedule / cron       → Standard Unix cron syntax
+#   - Cron syntax           → minute hour day month weekday
+#   - Timezone note         → GitHub Actions cron runs in UTC
+# ==============================================================================
+
+name: 10 · Scheduled Jobs
+
+on:
+  # ── Cron schedule ─────────────────────────────────────────────────────────────
+  # Standard cron syntax: minute  hour  day  month  weekday
+  #                            *     *    *      *        *
+  #
+  # Examples:
+  #   0 2 * * *      → Every day at 02:00 UTC
+  #   0 9 * * 1-5    → Weekdays at 09:00 UTC
+  #   */15 * * * *   → Every 15 minutes
+  #   0 0 1 * *      → First day of every month at midnight
+  schedule:
+    - cron: '0 2 * * *'     # Nightly at 02:00 UTC — full test suite
+    - cron: '0 9 * * 1'     # Every Monday at 09:00 UTC — dependency check
+
+  workflow_dispatch:   # Allow manual trigger for testing
+
+jobs:
+  # ── Job 1: Nightly test run ────────────────────────────────────────────────────
+  nightly-tests:
+    name: Nightly Full Test Suite
+    runs-on: ubuntu-latest
+    # Teaching note: We skip this job unless it was triggered by the nightly
+    # cron OR a manual trigger. The weekly check has its own job below.
+    if: github.event.schedule == '0 2 * * *' || github.event_name == 'workflow_dispatch'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+      - name: Run full test suite
+        run: go test -race -count=3 ./...   # count=3 catches flaky tests
+      - name: Generate coverage
+        run: |
+          go test -coverprofile=coverage.out ./...
+          go tool cover -func=coverage.out
+
+  # ── Job 2: Weekly dependency check ────────────────────────────────────────────
+  dependency-check:
+    name: Check for Dependency Updates
+    runs-on: ubuntu-latest
+    if: github.event.schedule == '0 9 * * 1' || github.event_name == 'workflow_dispatch'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+      - name: Check for outdated dependencies
+        run: |
+          echo "Checking for available module updates..."
+          go list -u -m all 2>/dev/null || echo "No module graph to check"
+      - name: Check for known vulnerabilities
+        # govulncheck scans your dependencies for known CVEs
+        run: |
+          go install golang.org/x/vuln/cmd/govulncheck@latest
+          govulncheck ./...

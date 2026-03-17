@@ -1,0 +1,57 @@
+# ==============================================================================
+# Workflow 01 — Hello, CI/CD!
+#
+# PURPOSE: The simplest possible GitHub Actions workflow. Nothing technical
+# happens here — the goal is to understand the ANATOMY of a workflow file.
+#
+# KEY CONCEPTS:
+#   - What is a workflow?   → A YAML file in .github/workflows/
+#   - What is a trigger?    → The `on:` block decides WHEN the workflow runs
+#   - What is a job?        → A group of steps that run on the same machine
+#   - What is a step?       → A single command or action inside a job
+#   - What is a runner?     → The virtual machine provided by GitHub
+# ==============================================================================
+
+name: 01 · Hello, CI/CD!   # This name appears in the GitHub Actions tab
+
+# ── Triggers ──────────────────────────────────────────────────────────────────
+# `on:` defines WHEN this workflow runs.
+on:
+  push:                    # Run on every push to any branch
+  workflow_dispatch:       # Also allow manual runs from the GitHub UI
+
+# ── Jobs ──────────────────────────────────────────────────────────────────────
+# A workflow has one or more jobs. By default they run IN PARALLEL.
+# Use `needs:` to chain them sequentially (covered in later workflows).
+jobs:
+  hello:
+    name: Say Hello
+    runs-on: ubuntu-latest   # The runner: a fresh Ubuntu VM spun up by GitHub
+
+    # ── Steps ────────────────────────────────────────────────────────────────
+    # Steps run SEQUENTIALLY, top to bottom, inside the same job.
+    steps:
+      # Each step has:
+      #   name: (optional) label shown in the UI
+      #   run:  shell command to execute
+      #   uses: a pre-built action from the Marketplace
+
+      - name: Print a greeting
+        run: echo "Hello from GitHub Actions! 👋"
+
+      - name: Show the runner's operating system
+        run: uname -a
+
+      - name: Show environment variables
+        run: |
+          echo "Repository : $GITHUB_REPOSITORY"
+          echo "Branch     : $GITHUB_REF_NAME"
+          echo "Commit SHA : $GITHUB_SHA"
+          echo "Actor      : $GITHUB_ACTOR"
+          echo "Run number : $GITHUB_RUN_NUMBER"
+
+      - name: Multi-line run example
+        run: |
+          echo "You can run multiple commands..."
+          echo "...in a single step using the pipe character (|)"
+          echo "Each line is a separate shell command"
